@@ -1,6 +1,4 @@
-# Circuitpython HTTP Neopixel Animation
-
-## A server controlling a strip of Neopixel LEDs.
+## A Web Page Controlling a Strip of Neopixel LEDs.
 
 The adafruit_httpserver library and other dependencies have to be [installed from the Bundle](https://circuitpython.org/libraries).
 
