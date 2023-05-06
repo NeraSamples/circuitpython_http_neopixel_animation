@@ -13,8 +13,7 @@ SPDX-License-Identifier: MIT
 	<script src="color-picker.min.js"></script>
 	<script>
 	//
-	var current_color = [0, 0, 0]
-	var current_animation = ""
+	var current_color = "00FF00"
 	//
 	let color_picker;
 	var CHOICE_DELAY = 500;
@@ -22,11 +21,10 @@ SPDX-License-Identifier: MIT
 	//
 	function send_fields() {
 		const animation_menu = document.getElementById("animation_menu")
-		const r = current_color[0]
-		const g = current_color[1]
-		const b = current_color[2]
 		const current_animation = animation_menu.value
-		var url = `/color?r=${r}&g=${g}&b=${b}&animation=${current_animation}`
+		var url = `/color?`
+		url += `&color=${current_color}`
+		url += `&animation=${current_animation}`
 		console.log(url)
 		fetch(url)
 	}
@@ -50,12 +48,7 @@ SPDX-License-Identifier: MIT
 		})
 		// when clicking the color picker
 		color_picker.on('change', function(color){
-			// console.log(color.toRGB())
-			var col = color.toRGB()
-			var r = Math.floor(col[0])
-			var g = Math.floor(col[1])
-			var b = Math.floor(col[2])
-			current_color = [r, g, b]
+			current_color = color.toHEX().replace("#", "")
 			update_values()
 		})
 		// this sets up the current color when the page is loaded
@@ -64,10 +57,10 @@ SPDX-License-Identifier: MIT
 		.then((res) => res.json())
 		.then((current_data) => {
 			current_color = current_data.color
-			console.log(current_color)
-			color_picker.color.fromRGBa(...current_color, 255)
+			console.log("color", current_color)
+			color_picker.color.fromHEX(current_color)
 
-			current_animation = current_data.animation
+			var current_animation = current_data.animation
 
 			animations = current_data.animations
 			console.log(animations)

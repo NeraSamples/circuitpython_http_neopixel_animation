@@ -60,7 +60,7 @@ POL_COOLDOWN = 0.2
 DISTANCE_LIMIT = const(5500)
 
 # default color
-current_color = (0, 255, 255)
+current_color = 0x00FFFF
 
 ################################################################
 # NVM configuration
@@ -73,13 +73,14 @@ id_anim = mem[0]
 
 # FF = never setup
 if id_anim != 0xFF:
-    current_color = tuple(mem[1:4])
+    current_color = int.from_bytes(mem[1:4], "big")
 else:
     id_anim = 0
 
 
 def save_mem():
-    microcontroller.nvm[0:4] = bytes((id_anim,) + current_color)
+    microcontroller.nvm[0] = id_anim
+    microcontroller.nvm[1:4] = current_color.to_bytes(3, "big")
 
 
 ############################################################################
@@ -330,14 +331,17 @@ def base(request):
     if animation in animations:
         set_animation(animation)
 
-    global current_color
     print(request.query_params)
-    r = request.query_params.get("r", 0)
-    g = request.query_params.get("g", 0)
-    b = request.query_params.get("b", 0)
-    current_color = (limit(r), limit(g), limit(b))
-    print("Color:", current_color)
-    set_color(current_color)
+    color = request.query_params.get("color", "").replace("#", "")
+    if color:
+        try:
+            color = int(color, 16)
+            if color < 0 or color > 0xFFFFFF:
+                raise ValueError("Color value out of range")
+            print(f"Color: {color:06X}")
+            set_color(color)
+        except ValueError as er:
+            print(f"Color Error: {er}")
 
     save_mem()
 
@@ -348,7 +352,7 @@ def base(request):
 @server.route("/getdata")
 def getdata(request):
     data = {
-        "color": current_color,
+        "color": f"{current_color:06X}",
         "animation": current_animation_name,
         "animations": list(animations.keys()),
     }
