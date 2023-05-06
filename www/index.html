@@ -12,14 +12,40 @@ SPDX-License-Identifier: MIT
 	<link rel="stylesheet" href="color-picker.min.css" />
 	<script src="color-picker.min.js"></script>
 	<script>
-	// delay sending color by one second
-	var CHOICE_DELAY = 1000;
+	//
+	var current_color = [0, 0, 0]
+	var current_animation = ""
+	//
 	let color_picker;
+	var CHOICE_DELAY = 500;
 	var sender = 0;
+	//
+	function send_fields() {
+		const animation_menu = document.getElementById("animation_menu")
+		const r = current_color[0]
+		const g = current_color[1]
+		const b = current_color[2]
+		const current_animation = animation_menu.value
+		var url = `/color?r=${r}&g=${g}&b=${b}&animation=${current_animation}`
+		console.log(url)
+		fetch(url)
+	}
+	function update_values() {
+		// this delays sending the color by the delay (1s by default) 
+		// avoids spamming the server
+		if(sender) {
+			clearTimeout(sender)
+			sender = 0
+		}
+		sender = setTimeout(() => {
+			send_fields()
+			sender = 0
+		}, CHOICE_DELAY)
+	}
 	// startup function
 	function loading() {
 		color_picker = new ColorPickerControl({
-			container: document.querySelector('.content'),
+			container: document.querySelector('.color_picker'),
 			use_alpha: false,
 		})
 		// when clicking the color picker
@@ -29,35 +55,60 @@ SPDX-License-Identifier: MIT
 			var r = Math.floor(col[0])
 			var g = Math.floor(col[1])
 			var b = Math.floor(col[2])
-			var url = `/color?r=${r}&g=${g}&b=${b}`
-			// this delays sending the color by the delay (1s by default) 
-			// avoids spamming the server
-			if(sender) {
-				clearTimeout(sender)
-				sender = 0
-			}
-			sender = setTimeout(() => {
-				fetch(url)
-				sender = 0
-			}, CHOICE_DELAY)
+			current_color = [r, g, b]
+			update_values()
 		})
 		// this sets up the current color when the page is loaded
-		fetch("/getcolor")
+		const animation_menu = document.getElementById("animation_menu")
+		fetch("/getdata")
 		.then((res) => res.json())
-		.then((current_color) => {
+		.then((current_data) => {
+			current_color = current_data.color
 			console.log(current_color)
 			color_picker.color.fromRGBa(...current_color, 255)
+
+			current_animation = current_data.animation
+
+			animations = current_data.animations
+			console.log(animations)
+			for(animation of animations) {
+				var show = animation.replace("_", " ")
+				var words = show.split(" ")
+				words = words.map((x) => x[0].toUpperCase() + x.slice(1))
+				show = words.join(" ")
+				var option = document.createElement("option")
+				option.value = animation
+				option.innerHTML = show
+				if(animation == current_animation) {
+					option.setAttribute("selected", "true")
+					console.log(animation, "selected")
+				}
+				animation_menu.appendChild(option)
+			}
 		})
 	}
 	</script>
 	<style>
-	.color-picker {
+	.content {
+		width: 220px;
 		margin: 16px auto auto;
+	}
+	.animations p {
+		margin: 6px 0px;
+	}
+	select {
+		font-size: inherit;
 	}
 	</style>
 </head>
 <body>
-	<div class="content"></div>
+	<div class="content">
+		<div class="animations">
+			<p>Select Animation:</p>
+			<p><select id="animation_menu" onchange="update_values()"></select></p>
+		</div>
+		<div class="color_picker"></div>
+	</div>
 	<script>loading();</script>
 </body>
 </html>

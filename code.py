@@ -10,6 +10,7 @@ import socketpool
 import time
 import wifi
 import os
+from collections import OrderedDict
 
 from digitalio import DigitalInOut, Pull
 from analogio import AnalogIn
@@ -208,7 +209,7 @@ stripette = helper.PixelMap.horizontal_lines(
     helper.vertical_strip_gridmap(NPIXELS // 2, alternating=True),
 )
 
-anim_s = CometsChase(
+anim_comet_chase = CometsChase(
     stripette,
     speed=PIX_DELAY,
     color=current_color,
@@ -217,7 +218,40 @@ anim_s = CometsChase(
     reverse=True,
 )
 
-anim = anim_s
+anim_alternative = CometsChase(
+    stripette,
+    speed=PIX_DELAY,
+    color=current_color,
+    size=5,
+    spacing=5,
+    reverse=False,
+)
+
+animations = OrderedDict([
+    ("comet_chase", anim_comet_chase),
+    ("alternative", anim_alternative),
+])
+animation_keys = list(animations.keys())
+
+current_animation_name = "comet_chase"
+current_animation = animations[current_animation_name]
+
+def set_animation(animation):
+    global current_animation_name, current_animation, id_anim
+
+    if isinstance(animation, str) and animation in animations:
+        pos = animation_keys.index(animation)
+    elif isinstance(animation, int):
+        pos = animation % len(animations)
+
+    if pos == -1:
+        print("Can't set animation", animation)
+    else:
+        current_animation_name = animation_keys[pos]
+        current_animation = animations[current_animation_name]
+        id_anim = pos
+
+set_animation(id_anim)
 
 ################################################################
 # color
@@ -227,10 +261,9 @@ anim = anim_s
 def set_color(color):
     global current_color
     current_color = color
-    anim.color = current_color
+    current_animation.color = current_color
     if status:
         status.fill(current_color)
-    save_mem()
 
 
 if status:
@@ -290,18 +323,13 @@ def limit(val):
         return 0
 
 
-@server.route("/button")
-def base(request):
-    global current_color
-    current_color = random.choice(wheel_colors)
-    print("Color:", current_color)
-    set_color(current_color)
-    with HTTPResponse(request, content_type=MIMEType.TYPE_HTML) as response:
-        response.send("ok")
-
-
 @server.route("/color")
 def base(request):
+    global current_animation, current_animation_name
+    animation = request.query_params.get("animation", "")
+    if animation in animations:
+        set_animation(animation)
+
     global current_color
     print(request.query_params)
     r = request.query_params.get("r", 0)
@@ -310,14 +338,22 @@ def base(request):
     current_color = (limit(r), limit(g), limit(b))
     print("Color:", current_color)
     set_color(current_color)
+
+    save_mem()
+
     with HTTPResponse(request, content_type=MIMEType.TYPE_HTML) as response:
         response.send("ok")
 
 
-@server.route("/getcolor")
-def base(request):
+@server.route("/getdata")
+def getdata(request):
+    data = {
+        "color": current_color,
+        "animation": current_animation_name,
+        "animations": list(animations.keys()),
+    }
     with HTTPResponse(request, content_type=MIMEType.TYPE_JSON) as response:
-        response.send(json.dumps(current_color))
+        response.send(json.dumps(data))
 
 
 # start server
@@ -354,14 +390,14 @@ async def main():
     while True:
         # play animation depending on the mode
         if running_mode.value == MODE_MAX:
-            anim.animate(show=False)
+            current_animation.animate(show=False)
             # overlay white pixels during MAX mode
             for i in range(0, NPIXELS, 4):
                 pixels[i] = (100, 100, 100)
             pixels.show()
         else:
             # play normal in min mode
-            anim.animate()
+            current_animation.animate()
 
         if status:
             status.fill(colorwheel(time.monotonic() * 100))
