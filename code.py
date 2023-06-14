@@ -17,9 +17,7 @@ from analogio import AnalogIn
 from micropython import const
 from rainbowio import colorwheel
 
-from adafruit_httpserver.server import HTTPServer
-from adafruit_httpserver.response import HTTPResponse
-from adafruit_httpserver.mime_type import MIMEType
+from adafruit_httpserver import Server, Response, MIMETypes
 
 PORT = 8000
 ROOT = "/www"
@@ -308,7 +306,7 @@ if not wifi.radio.connected:
 print(f"Listening on http://{wifi.radio.ipv4_address}:{PORT}")
 
 pool = socketpool.SocketPool(wifi.radio)
-server = HTTPServer(pool, root_path=ROOT)
+server = Server(pool, root_path=ROOT, debug=True)
 
 ############################################################################
 # server routes and app logic
@@ -345,8 +343,7 @@ def base(request):
 
     save_mem()
 
-    with HTTPResponse(request, content_type=MIMEType.TYPE_HTML) as response:
-        response.send("ok")
+    return Response(request, "ok")
 
 
 @server.route("/getdata")
@@ -356,8 +353,7 @@ def getdata(request):
         "animation": current_animation_name,
         "animations": list(animations.keys()),
     }
-    with HTTPResponse(request, content_type=MIMEType.TYPE_JSON) as response:
-        response.send(json.dumps(data))
+    return Response(request, json.dumps(data), content_type=MIMETypes.REGISTERED[".json"])
 
 
 # start server
